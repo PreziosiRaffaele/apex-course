@@ -22,6 +22,9 @@ Governor limits are the Salesforce runtime rules that keep one customer’s auto
 Whenever possible, inspect counters with the `Limits` class while debugging to identify which resource is almost exhausted.
 
 ## Reading Exercise: Spot the Risk
+
+### The Loop-of-Doom Asset Trigger
+
 ```apex
 trigger AssetTrigger on Asset (before update) {
     for (Asset rec : Trigger.new) {
@@ -37,15 +40,14 @@ trigger AssetTrigger on Asset (before update) {
 ```
 - What is this loop trying to accomplish?
 - Which limit is put at risk and why?
-- How could you redesign the logic so that declarative changes (like adding another lookup update) don’t multiply the problem?
 
----
+### The not-so-innocent List<Account>
 ```apex
 List<Account> everyAccountEver = [SELECT Id FROM Account];
 ```
 - This innocent line tries to pull every Account in the org. Which limit is put at risk and why?
 
----
+### The “Just a Quick Script” Data Clean-up
 ```apex
 List<Account> accountsMissingRegion = [
     SELECT Id FROM Account WHERE Region_Default__c = null
