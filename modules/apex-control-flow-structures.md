@@ -1,10 +1,11 @@
 # Apex Control Flow Structures
-Control flow is the set of instructions that tells Apex **which** statements run and **how many times**. Before writing anything, be able to read a block of logic and answer “which path fires for this record, and why?”
+Control flow Structure is the set of instructions that tells Apex **which** statements run.
 
-## Why Control Flow Matters
-- Guides business rules: comparisons such as “Is this Opportunity over $1M?” translate directly into `if` statements.
-- Explains runtime errors: infinite loops or forgotten `else` blocks often hide the root cause of governor limit issues.
-- Bridges declarative tools: Flow Decisions and Loops use the same logic concepts; Apex just uses code keywords instead of icons.
+## Types 
+- Conditional: `if`, `else if`, `else`
+- Looping: `for`, `while`, `do-while`
+- Breaking: `break`, `continue`
+- Exceptions: `try`, `catch`, `finally`
 
 ## Branching With `if`, `else if`, and `else`
 ```apex
@@ -83,6 +84,14 @@ do {
 Ask: why is it important that the first batch runs even if `getBatch(0)` returns zero rows?
 
 **Bad pattern to call out:** performing SOQL or DML inside nested loops. Explain why: each pass consumes more limits than necessary.
+
+### Exercise: Loop Remix Challenge
+Give learners this base scenario: “Mark every Task in `pendingTasks` as `Ready_to_Send__c = true` until you hit 25 records.” Ask them to implement the exact same behavior three times:
+1. Enhanced `for` loop across the list.
+2. Indexed `for` loop using `i` and `pendingTasks[i]`.
+3. `while` loop that tracks its own counter.
+
+Debrief by comparing which version is easiest to read, which exposes index math mistakes, and why each structure still needs a clear exit condition to stay governor-safe.
 
 ### `continue` vs `break`
 - `continue` skips the rest of the current loop iteration and moves to the next record. Use it when certain rows need special handling and should not fall through to the remaining statements.

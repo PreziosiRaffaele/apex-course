@@ -96,31 +96,14 @@ Use Apex or other code-based approaches when:
 
 ---
 
-## 5. Examples of Functionality (Flows vs. Code)
-
-Examples of functionality that might be implemented in **flows**:
-
-- Simple record automation (create/update related records).
-- Field updates and notifications based on straightforward conditions.
-- Guided user processes (screen flows) with limited branching.
-- Simple approval routing based on field values.
-
-Examples where **code** may be more appropriate:
-
-- Complex multi-step orchestrations with branching and error recovery.
-- Heavy calculation engines. 
-- Reusable business services consumed by LWC, APIs, and triggers.
-- High-volume data operations (e.g. nightly jobs, mass data updates).
-
----
-
-## 6. There Is No Simple Rule of Thumb
+## 5. There Is No Simple Rule of Thumb
 
 There is **no single golden rule** that automatically tells you whether to choose declarative or programmatic tooling.
-Since declarative tools are designed to be easy to use, they are often the **first choice** for many use cases.
-Document when you choose programmatic tools.  
 
-### 6.1 Key decision criteria
+Since declarative tools are designed to be easy to use, they are often the **first choice** for many use cases.
+Document the reasons for choosing programmatic tools.
+
+### 5.1 Key decision criteria
 
 When deciding between declarative vs. programmatic, consider:
 
@@ -136,3 +119,69 @@ When deciding between declarative vs. programmatic, consider:
    - Do platform limits and flow constraints help or hinder here?
 7. **Risk**  
    - Which approach reduces the risk of defects and regressions?
+
+---
+## 6. Examples where Apex is appropriate
+Some examples where Apex is a better fit than declarative tools.
+
+## 6.1 Service class used by multiple processes
+**Business example:**  
+A service class that calculates prices and needs to run in multiple places, such as a trigger, LWC, and batch Apex.
+
+**Why declarative tools fall short:**  
+- Difficult to reuse the same logic across multiple automation types
+- Interface is not clear
+- Complex conditional branches become hard to maintain in a Flow
+- Limited control over transactions, error handling, and performance
+
+**Why Apex is a better fit:**  
+- A single, reusable service class ensures consistent pricing logic everywhere
+- Can handle complex calculations, conditional flows, and multi-step rules
+- Full control over transaction boundaries, error handling, and bulk processing
+- Clear interface for developers to understand and maintain
+
+Example: 
+A developer doesn’t need to know how the PricingService works internally—the entire implementation can be hidden behind the class. What matters is the public interface: the inputs it accepts and the outputs it returns. This creates a clean contract that any caller (Trigger, LWC, Batch, REST service) can rely on without understanding the underlying logic.
+
+Flows don’t offer this level of abstraction. Their logic is exposed, their structure is not encapsulated, and they cannot define a formal, strongly typed interface. As a result, consumers must understand the internal Flow design, manually wire inputs/outputs, and risk mismatches that only surface at runtime.
+
+```apex
+public with sharing class PricingService {
+    public class PricingRequest {
+        public Id productId;
+        public Integer quantity;
+        public String customerTier;
+        public Decimal discountPercent;
+    }
+
+    public class PricingResult {
+        public Decimal unitPrice;
+        public Decimal totalPrice;
+        public Boolean isDiscountApplied;
+    }
+
+    public static PricingResult calculatePrice(PricingRequest req) {
+        // Complex logic here...
+        PricingResult result = new PricingResult();
+        result.unitPrice = 100;
+        result.totalPrice = result.unitPrice * req.quantity;
+        result.isDiscountApplied = req.discountPercent > 0;
+        return result;
+    }
+}
+```
+---
+
+## 6.2 Real-Time Integrations with External Systems
+**Business example:**  
+Upon Case creation, Salesforce must call an external warranty API with a complex payload to validate product warranty information.
+
+**Why declarative tools fall short:**  
+- Hard to maintain complex API callouts even if external services are defined.
+- Limited error handling.
+
+**Why Apex is a better fit:**  
+- Complex queries and updates available.
+- Custom error-handling and retries.
+- Full control over request/response processing.
+
