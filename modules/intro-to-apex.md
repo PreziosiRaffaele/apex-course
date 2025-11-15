@@ -28,6 +28,7 @@ Because Apex checks types the moment you save or deploy, these mismatches surfac
 ### Object-Oriented 
 It is programming paradigm that organizes software design around objects, that are instances of classes.
 Based of the four pillars: encapsulation, inheritance, polymorphism, and abstraction.
+More details will be explained in the OOP module.
 
 ## Why Apex Exists
 - Extend Salesforce beyond declarative point-and-click tools.
@@ -38,8 +39,9 @@ Based of the four pillars: encapsulation, inheritance, polymorphism, and abstrac
 - **Managed runtime:** Salesforce executes Apex on shared infrastructure and enforces governor limits (CPU time, heap size, SOQL/DML counts) to preserve fairness.
 - **Database native:** Apex speaks SOQL/SOSL for querying data, and DML statements for inserts/updates/deletes.
 
-### How Apex Talks to Salesforce Data
-Before Apex can read or save records, it needs to know *which* object the record belongs to. An `Account` variable represents one CRM row; a `List<Account>` holds several at once.
+### Database Native
+
+SOQL can be used to fetch a list of records from the database.
 
 #### Reading with SOQL 
 ```apex
@@ -55,6 +57,8 @@ System.debug('Accounts missing revenue: ' + unscoredAccounts.size());
 
 #### Writing with DML 
 
+DML statements (`insert`, `update`, `delete`, `upsert`) can be used to create, update, or delete records in the database.
+
 ```apex
 Account newCustomer = new Account(
     Name = 'Universal Paper Trails',
@@ -68,25 +72,23 @@ for (Account acct : unscoredAccounts) {
 update unscoredAccounts; // Commits the edits as one bulk operation.
 ```
 
-- Create records in memory, then issue DML to save them.
-- Looping through queried records lets you interpret existing data and prepare precise updates.
-
-#### Spot the Bad Pattern
-```apex
-List<Account> everyAccountEver = [SELECT Id FROM Account];
-```
-
-This innocent line tries to pull every Account in the org. A simple declarative change (like a mass import) would make it exceed the “50,000 rows per transaction” limit and the trigger would fail. Good Apex always narrows its queries to just the rows it needs.
-
 ### Apex Entry Contexts 
-- **DML triggers:** `before`/`after` triggers on objects plus Platform Event and Change Data Capture triggers.
-- **Anonymous Apex:** One-off scripts executed from Developer Console, VS Code, or tooling APIs.
-- **Lightning / Flow invocations:** Lightning Web Components, Aura, Flow invocable actions, and Process Builder call Apex methods marked `@AuraEnabled` or `@InvocableMethod`.
-- **Web services:** Custom REST (`@RestResource`) and SOAP (`webService` keyword) endpoints responding to external API calls.
-- **Asynchronous jobs:** Queueable, Future, Batch Apex, and Continuations for long-running or parallelizable work.
-- **Scheduled Apex:** Cron-like jobs that fire Apex classes implementing `Schedulable`.
-- **Testing context:** `@IsTest` methods run in isolated transactions to validate behavior and support deployments.
-- **Email services:** Apex classes implementing `Messaging.InboundEmailHandler` process inbound email.
+Each entry context is simply a doorway Salesforce opens before running Apex. Seeing the doorway explains why the code exists and which limits apply.
+
+**DML triggers** fire automatically when records change. _Example: When a data import inserts Accounts without an Industry, a `before insert` trigger fills in “Unspecified” across every row before the transaction commits._
+
+**Anonymous Apex** runs as soon as you click Execute in Developer Console or VS Code. _Example: An admin runs a one-time script that default the Industry with "Unspecified" value on 200 stale Accounts during a maintenance window; the script executes immediately in the admin’s session._
+
+**Lightning / Flow invocations** execute when a component, Flow, or Process Builder calls an exposed method. _Example: An Lightning web component calls `fetchLead` to pull the current Lead’s Company and Status so the UI can render a summary; 
+
+**Web services** expose Apex as REST or SOAP endpoints that external systems call. _Example: A warehouse management system posts to `/services/apexrest/returns` with an Order Id; the Apex REST class verifies the customer is entitled to a return, allocates replacement inventory, and writes a Case plus a custom Return__c record. 
+
+**Asynchronous jobs** such as Queueable or Future Apex start when you enqueue them, giving the work its own transaction and fresh governor limits. _Example: After a user clicks “Generate Invoice,” the controller enqueues `InvoiceExporter`, which later wakes up, sends each invoice to an external ERP, and updates the records without keeping the user waiting._
+**Scheduled Apex** starts because the platform clock reached a cron expression defined by the admin or deployment script. _Example: `MonthlyReminder` runs at 08:00 on the first business day, queries all Tasks due today, and emails the support manager a digest even though no user is online at that moment._
+
+**Testing context** begins when an `@IsTest` method runs during `Run Tests` or deployment. _Example: `AccountTriggerTest` inserts a mock Account, asserts the trigger defaulted Industry, and then Salesforce rolls back every insert so the org stays clean._
+
+**Email services** start when Salesforce receives an email tied to an Apex handler address. _Example: A customer sends an email to `support@yourcompany.salesforce.com`; `SupportEmailHandler` converts the subject and body into a new Case without a human agent touching the UI._
 
 ## How Apex Runs
 1. **Compilation:** When saved, Apex compiles into bytecode stored in the org's metadata.
