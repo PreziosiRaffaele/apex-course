@@ -1,74 +1,138 @@
-# Declarative vs Programmatic Tools
-Understand how to match Salesforce requirements to the right level of automation before writing or requesting Apex. Analysts who recognize when declarative tools are enough keep the org maintainable and reserve developer capacity for the work that truly needs code.
+# Declarative vs. Programmatic (Apex)  
+Salesforce provides a rich set of **declarative tools**—Flows, Validation Rules, Approval Processes, Assignment Rules, etc.—that allow us to design business logic without writing code.
 
-## Core Principles
-- **Start declarative by default.** Flow, Approval Processes, and dynamic forms are faster to ship and easier for admins to own post-launch.
-- **Escalate when logic becomes unreadable.** If your Flow looks like spaghetti or needs workarounds (loops inside loops, excessive invocable calls), the requirement is signaling for Apex.
-- **Model operational risk.** Apex trades faster runtime and reusability for deploy-time rigor (tests, code review, release windows). Document the stakeholder appetite for each.
+## 1. Why Salesforce Provides Declarative Tools
 
-## Automation Spectrum (Mermaid Overview)
-```mermaid
-flowchart TB
-    A[Business Requirement] --> B{CRUD-only?}
-    B -->|Yes| C[Validation Rules and Dynamic Forms]
-    B -->|No| D{Is Flow bulk-safe and readable?}
-    D -->|Yes| E[Record-Triggered or Screen Flow]
-    D -->|No| F{Need reusable logic across channels?}
-    F -->|Yes| G[Apex Trigger or Invocable Class]
-    F -->|No| H[Flow and Subflow Refactor]
-    G --> I[Add Tests and Deployment Plan]
-```
+Declarative tools are designed to:
 
-![Automation Continuum](assets/automation-continuum.svg)
+- **Be easy to access**  
+  Anyone with admin/consultant skills can use them without deep coding knowledge.
+- **Enable rapid development**  
+  Faster to configure, test, and deploy small–medium complexity logic.
+- **Provide structure**  
+  Built-in frameworks and patterns to solve business problems consistently.
+- **Provide guardrails**  
+  Reduce the chance of introducing security, performance, or logic errors.
 
-## Strengths at a Glance
-| Scenario | Declarative Tools Shine When | Apex Becomes Necessary When |
-| --- | --- | --- |
-| **Simple field updates** | Limited objects, no branching, predictable order | Multiple objects require coordinated DML with error recovery |
-| **User-guided intake** | Screen Flows provide input validation and conditional visibility | Intake must call external APIs, cache responses, or share logic with a partner portal |
-| **Record-triggered automation** | Volume low-to-medium (<2k records/tx), operations single-object | Transactions hit bulk limits, require complex SOQL joins, or must de-duplicate data inside a set |
-| **Approval or compliance steps** | Standard approval chains and escalations work | Approvals vary by product hierarchy or require dynamic routing stored in custom metadata |
+---
 
-## Evaluation Checklist
-1. **Volume & Limits:** Estimate worst-case records per transaction. If the number crosses 200 or touches nightly integrations, Apex provides deterministic bulk handling.
-2. **Data Shape:** Count how many objects and relationships must be updated together. Cross-object DML plus recursion control typically favors Apex services.
-3. **Reusability:** Will this logic run from Flow today and a REST API tomorrow? Use Apex classes with clearly named methods (`OpportunityDiscountService.apply`) and expose them via invocable actions.
-4. **Auditability:** Explain who will own future changes. If business users need to tweak logic weekly, stay declarative as long as performance allows.
-5. **Risk Profile:** Document governor-limit-sensitive operations (nested loops, multiple SOQL queries). If you can’t articulate how the automation avoids limits, consult developers sooner.
+## 2. Our Goals when we develop a new feature 
 
-## Communicating with Developers
-- **Provide acceptance criteria per entry context.** Example: “Trigger must process 500 Billing__c updates from integration within one transaction, skipping records that violate credit rules.”
-- **Share interim Flow logic.** Developers can translate Flow screens/decisions into Apex classes faster when they see the current shapes.
-- **Flag integration partners.** Callouts and platform events have different limits; knowing them upfront prevents refactors mid-sprint.
-- **Align on test data.** Suggest concrete sample records and edge cases so developers can encode them in `@IsTest` classes you can read later.
+Regardless of the tool (declarative or programmatic), our goals are:
 
-## Reading Apex for Admins
-```apex
-public without sharing class DiscountEvaluator {
-    public static Decimal applyTieredDiscount(Quote__c quoteRecord) {
-        Map<Integer, Decimal> tiers = new Map<Integer, Decimal>{
-            50000 => 0.10,
-            100000 => 0.15
-        };
+- **Build the right thing for the client**
+- **Build it fast**
+- **Prevent issues later**
 
-        Decimal pct = 0;
-        for (Integer threshold : tiers.keySet()) {
-            if (quoteRecord.Annual_Value__c >= threshold) {
-                pct = tiers.get(threshold);
-            }
-        }
-        return quoteRecord.Annual_Value__c * pct;
-    }
-}
-```
-When reading Apex like this, focus on:
-- **Inputs/outputs:** Method expects `Quote__c` and returns a `Decimal`. This hints that a Flow could call it with an invocable method wrapper.
-- **Limit awareness:** No SOQL/DML, so the method is bulk-safe as long as callers run it inside loops carefully.
-- **Reusability:** Logic centralized instead of duplicated across Flows.
+### 2.1 Why build fast?
 
-## Exercise: Decision Log
-Document two automation ideas from your org and score each against the checklist above. Produce:
-- A recommendation (stay declarative, refactor Flow, or request Apex).
-- The apex service(s) you would expect (`Trigger`, `Queueable`, `Invocable`).
-- Risks to raise in sprint planning (limits, data skew, deployment timing).
-Share the log with your developer counterpart to validate assumptions before committing to a build.
+- **Faster feedback from users**  
+  The sooner we deliver, the sooner we learn if we got it right.
+- **Assumptions are often wrong**  
+  Many features end up underused or unused. We should validate ideas early.
+- **MVP mindset**  
+  - Deliver a **Minimum Viable Product (MVP)** to validate the idea.  
+  - An MVP is **not** a POC: it should work reliably in production, even if minimal.
+
+### 2.2 Why prevent issues later?
+
+- **Issues damage client trust**
+- **Fixing bugs takes time away** from building new value
+- **Stable foundations reduce long-term cost**
+
+> Spending less time on building and fixing issues provides more time to focus on **building the right thing**.
+
+---
+
+## 3. Declarative Tools
+
+In general, declarative tools are the **first and safest choice** when designing automations in Salesforce.
+
+### 3.1 Strengths of declarative tools
+
+- **Fast to build**
+- **Lower risk**
+- **Easier for admins to understand and maintain**
+- **Guardrails and standard patterns**
+- **Lower cost of change**
+
+Typically, declarative tools:
+
+- Offer sufficient performance for standard business processes.
+- Integrate natively with core Salesforce features.
+- Reduce dependency on specialized development skills.
+
+---
+
+## 4. Programmatic Tools (Apex & Code)
+
+Declarative solutions are not always enough. There are scenarios where **Apex or other programmatic approaches** are the better—or only—option.
+
+### 4.1 Strengths of programmatic tools
+
+- **More flexibility**  
+  Handle complex and edge-case logic beyond what flows or declarative tools can model clearly.
+- **Better reusability**  
+  Classes, methods, and frameworks can be reused across multiple features.
+- **Performance and scalability**  
+  Better suited for heavy processing and large data volumes.
+- **Structured complexity**  
+  Complex business rules can be expressed more clearly in code with good design.
+- **Design patterns**  
+  You can use standard patterns (e.g., Service Layer, Repository, Strategy) to build robust architecture.
+- **Maintainability (for experts)**  
+  For experienced developers, a well-structured Apex solution can be easier to read and extend.
+
+### 4.2 Typical use cases for programmatic tools
+
+Use Apex or other code-based approaches when:
+
+- Business logic is **too complex or messy** to model with flows.
+- You need **advanced error handling** or transaction control.
+- You require **high-performance bulk processing**.
+- Logic must be **reused across many touchpoints** (triggers, LWC, integrations, etc.).
+- You need **custom integrations** with external systems.
+- You’re building a **framework or shared library** for a wider solution.
+
+---
+
+## 5. Examples of Functionality (Flows vs. Code)
+
+Examples of functionality that might be implemented in **flows**:
+
+- Simple record automation (create/update related records).
+- Field updates and notifications based on straightforward conditions.
+- Guided user processes (screen flows) with limited branching.
+- Simple approval routing based on field values.
+
+Examples where **code** may be more appropriate:
+
+- Complex multi-step orchestrations with branching and error recovery.
+- Heavy calculation engines. 
+- Reusable business services consumed by LWC, APIs, and triggers.
+- High-volume data operations (e.g. nightly jobs, mass data updates).
+
+---
+
+## 6. There Is No Simple Rule of Thumb
+
+There is **no single golden rule** that automatically tells you whether to choose declarative or programmatic tooling.
+Since declarative tools are designed to be easy to use, they are often the **first choice** for many use cases.
+Document when you choose programmatic tools.  
+
+### 6.1 Key decision criteria
+
+When deciding between declarative vs. programmatic, consider:
+
+1. **Complexity**  
+   - Can it be implemented clearly and safely in declarative tools?
+3. **Performance**  
+   - How often does it run? On how much data? In which contexts (synchronous/async)?
+4. **Reusability**  
+   - Will this logic be needed in multiple places or channels?
+5. **Scalability**  
+   - Is this likely to grow more complex over time?
+6. **Governance & guardrails**  
+   - Do platform limits and flow constraints help or hinder here?
+7. **Risk**  
+   - Which approach reduces the risk of defects and regressions?

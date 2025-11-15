@@ -8,6 +8,5 @@ Learners are not expected to write production-grade code. Instead, the course fo
 2. [Governor Limits](modules/governor-limits.md) — Diagnose and design around transactional limits so automations remain reliable under enterprise load.
 3. [Declarative vs Programmatic Tools](modules/declarative-vs-programmatic.md) — Build a repeatable decision model for when Flow, approvals, or Apex should own a requirement, and learn how to brief developers with risk-aware context.
 4. [Apex Data Types](modules/apex-data-types.md) — Master scalar types, `Id`/date handling, and the differences between strong typing on `sObject` records versus the dynamic `sObject` base class.
-5. [Apex Control Flow](modules/apex-control-flow.md) — Interpret branching and looping structures so you can predict how triggers behave before changing requirements.
+5. [Apex Control Flow structures](modules/apex-control-flow-structures.md) — Interpret branching and looping structures so you can predict how triggers behave before changing requirements.
 6. [Apex Collections](modules/apex-collections.md) — Learn when to choose Lists, Sets, or Maps, and practice bulk-safe DML/SOQL patterns that scale beyond single-record thinking.
-7. [Apex OOP Fundamentals](modules/apex-oop-fundamentals.md) — Apply sharing keywords, inheritance, interfaces, and enums to model business rules cleanly.

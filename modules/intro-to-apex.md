@@ -38,6 +38,46 @@ Based of the four pillars: encapsulation, inheritance, polymorphism, and abstrac
 - **Managed runtime:** Salesforce executes Apex on shared infrastructure and enforces governor limits (CPU time, heap size, SOQL/DML counts) to preserve fairness.
 - **Database native:** Apex speaks SOQL/SOSL for querying data, and DML statements for inserts/updates/deletes.
 
+### How Apex Talks to Salesforce Data
+Before Apex can read or save records, it needs to know *which* object the record belongs to. An `Account` variable represents one CRM row; a `List<Account>` holds several at once.
+
+#### Reading with SOQL 
+```apex
+List<Account> unscoredAccounts = [
+    SELECT Id, Name, AnnualRevenue
+    FROM Account
+    WHERE AnnualRevenue = null
+    LIMIT 50
+];
+
+System.debug('Accounts missing revenue: ' + unscoredAccounts.size());
+```
+
+#### Writing with DML 
+
+```apex
+Account newCustomer = new Account(
+    Name = 'Universal Paper Trails',
+    Industry = 'Manufacturing'
+);
+insert newCustomer; // Saves the record and assigns an Id.
+
+for (Account acct : unscoredAccounts) {
+    acct.AnnualRevenue = 0; // Placeholder until Sales supplies the real figure.
+}
+update unscoredAccounts; // Commits the edits as one bulk operation.
+```
+
+- Create records in memory, then issue DML to save them.
+- Looping through queried records lets you interpret existing data and prepare precise updates.
+
+#### Spot the Bad Pattern
+```apex
+List<Account> everyAccountEver = [SELECT Id FROM Account];
+```
+
+This innocent line tries to pull every Account in the org. A simple declarative change (like a mass import) would make it exceed the “50,000 rows per transaction” limit and the trigger would fail. Good Apex always narrows its queries to just the rows it needs.
+
 ### Apex Entry Contexts 
 - **DML triggers:** `before`/`after` triggers on objects plus Platform Event and Change Data Capture triggers.
 - **Anonymous Apex:** One-off scripts executed from Developer Console, VS Code, or tooling APIs.

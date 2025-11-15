@@ -42,4 +42,3 @@ All data is saved as binary; what changes is the way it is interpreted.
 
 ## Exercise
 Run your first "Hello, World!" script and check the debug log to see the message.
-Use VsCode or Developer Console.
