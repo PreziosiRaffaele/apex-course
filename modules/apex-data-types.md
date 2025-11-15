@@ -1,69 +1,45 @@
 # Apex Data Types
-Build reliable solutions by understanding how Apex stores and validates data. This module moves from primitive types to rich `sObject` records so analysts and admins can reason about strongly typed logic before writing collections or OOP-heavy code.
+Data types answer the question “what kind of information is this?” 
 
-## Scalar and System Types
-Salesforce provides Java-like primitives plus platform-specific types (`Id`, `Decimal`, `Date`, `Datetime`, `Time`). Use the smallest type that expresses intent and keeps governor usage low.
+## Why Data Types Matter
+- They protect automations: Apex enforces these types at compile time so mistakes are caught early.
+- They communicate intent: when you read `Boolean needsFollowUp` you immediately know it is just a yes/no flag.
 
-```apex
-public class TypePlayground {
-    public static void demo() {
-        Integer invoiceCount = 12;
-        Decimal totalAmount = 1250.45;
-        Boolean needsFollowUp = totalAmount > 1000;
-        Date closeDate = Date.today().addDays(30);
-        Id exampleId = '001000000000001AAA';
+Think about a spreadsheet—each column expects specific content (number, date, text). Apex simply makes that contract explicit in code.
 
-        System.debug(String.format('Invoices: {0} | Total: {1,number,#.00}', new List<Object>{ invoiceCount, totalAmount }));
-        System.debug('Follow-up? ' + needsFollowUp);
-        System.debug('Close Date: ' + closeDate);        
-    }
-}
-```
-
-### Casting and Precision
-- Implicit casts only occur when no data loss happens (e.g., `Integer` → `Long`).
-- Call helper methods like `Decimal.valueOf('19.95')` for safe parsing.
-- Guard `Decimal` arithmetic with `setScale()` when currency precision matters.
-
-## Date and Time Awareness
-Store date-only fields as `Date` and any clock-specific value as `Datetime` or `Time`. Apex automatically localizes values when they are rendered in the UI, but calculations (like SLA expirations) must use UTC math to avoid daylight savings bugs.
+## Your First Apex Program: Hello World
+A “Hello World” program is traditionally the smallest possible script that proves your environment runs code. In Apex you can paste the lines below into the **Execute Anonymous** window (Developer Console ▸ Debug ▸ Open Execute Anonymous Window) and click **Execute**.
 
 ```apex
-Datetime eta = System.now().addMinutes(90);
-Integer minutesLeft = eta.getTime() - System.now().getTime();
+String message = 'Hello, World! Welcome to Apex.';
+System.debug(message);
 ```
 
-## sObjects vs Generic `sObject`
-`sObject` behaves like a dynamic interface for records when you do not know the type at compile time. Prefer concrete types (`Account`, `Opportunity`) for compile-time safety, but leverage `sObject` when iterating through describe metadata or handling polymorphic lookups.
+### What `System.debug` Shows You
+When Apex runs, Salesforce produces a short transcript of everything that happened. After you click **Execute**, open the newest entry in the Logs panel and you will see every `System.debug()` message. 
 
-```apex
-public class RecordFactory {
-    public static Account buildAccount(String name, Decimal annualRevenue){
-        return new Account(Name = name, AnnualRevenue = annualRevenue);
-    }
+### Statements, Declarations, and Initialization
+- A **statement** is a complete instruction that Apex can execute, usually ending with a semicolon. Example: `System.debug(message);`.
+- A **declaration** introduces a new variable by naming its data type and variable name so Apex reserves memory for that kind of information. Example: `String message;`.
+- **Initialization** assigns the first value to a variable, often in the same line as the declaration: `String message = 'Hello, World!';`. You can also declare first and initialize later in another statement.
 
-    public static sObject cloneToType(String apiName, Id sourceId){
-        sObject record = Database.query('SELECT Id FROM ' + apiName + ' WHERE Id = :sourceId');
-        return record.clone(false, false, false, false);
-    }
-}
-```
+## Primitive Types in Apex
+Languages often call these “primitive” types because they are the most basic building blocks. Everything else in the language eventually relies on these primitives to describe the information inside a record or calculation.
 
-## Type Relationships (Mermaid Overview)
-```mermaid
-graph TD;
-    A[Scalar Types] -->|numbers| B(Integer & Long);
-    A -->|precision| C(Decimal);
-    A --> D(Boolean/String);
-    E[sObjects] -->|standard| F(Account, Contact);
-    E -->|custom| G(Custom__c);
-    E -->|polymorphic| H(sObject);
-```
+**Apex primitives you will encounter:**
+- `Boolean` — true or false values. Stored as a single bit (binary digit), so it represents 2 combinations (0 = false, 1 = true).
+- `Integer` — 32-bit whole numbers, giving 2^32 (about 4.29 billion) (-2,147,483,648 to 2,147,483,647) possible values; useful for counts.
+- `Long` — 64-bit whole numbers for even larger counts (2^64 combinations).
+- `Decimal` and `Double` — numbers with digits after the decimal point (use Decimal for currency). They are stored using a combination of bits for the sign, digits, and scale, so they do not have a simple 2^n range, but still originate from binary storage. Double use floating-point numbers, which are stored in binary as a combination of bits for the sign, digits, and scale. They are not precise as decimals, but they are more compact than decimals.
+- `String` — text of any length.
+- `Id` — 15/18-character Salesforce record identifiers.
+- `Date`, `Datetime`, `Time` — calendar-only, date+time, or clock-only values.
+- `Blob` — raw bytes, typically used for files or encoded data (mentioned here for completeness; most business logic won’t touch it).
 
-## Exercise: Data Validation Utility
-Create an `InputValidator` class that accepts a `Map<String, Object>` of user-provided values and returns a typed DTO (for example, `LeadCaptureRequest`). The class should:
-1. Attempt to coerce `String` inputs into the expected scalar types using `valueOf` methods.
-2. Validate mandatory fields (name, email, target close date) and collect any failures into a `List<String>`.
-3. Return both the DTO and errors so a Flow or LWC can branch on the result.
+All data is saved as binary; what changes is the way it is interpreted.
 
-Deliverable: runnable class plus a short anonymous Apex script proving that valid payloads produce a populated DTO and invalid payloads capture errors.
+> **Bit refresher:** A bit is the smallest possible unit of information in computing and can only be 0 or 1. The number of different values a primitive can represent is `2^(number of bits)`. For example, 32-bit Integers have `2^32` combinations.
+
+## Exercise
+Run your first "Hello, World!" script and check the debug log to see the message.
+Use VsCode or Developer Console.

@@ -3,7 +3,31 @@ Apex is Salesforce's server-side programming language for embedding custom logic
 - **It is strongly typed.**
 - **It is object-oriented.**
 
+## Strongly Typed 
 **Strongly typed** means every variable must declare a specific type (for example `Account`, `Integer`, or `List<Contact>`), and the compiler enforces those types before code runs, preventing accidental misuse at runtime.
+
+Apex example (strongly typed):
+
+```apex
+Integer qty = 10;
+qty = 'ten'; // compile-time error: string literal is not an Integer
+
+String name = 'Acme';
+name = 1234; // compile-time error: string literal is not a String
+```
+
+JavaScript example (not strongly typed):
+
+```javascript
+let qty = 10;
+qty = 'ten'; // allowed
+```
+
+Because Apex checks types the moment you save or deploy, these mismatches surface early, while JavaScript defers them until the logic actually executes.
+
+### Object-Oriented 
+It is programming paradigm that organizes software design around objects, that are instances of classes.
+Based of the four pillars: encapsulation, inheritance, polymorphism, and abstraction.
 
 ## Why Apex Exists
 - Extend Salesforce beyond declarative point-and-click tools.

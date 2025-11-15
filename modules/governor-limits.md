@@ -1,54 +1,38 @@
-# Governor Limits and Transactions
-Salesforce enforces runtime limits to keep shared infrastructure stable. This module teaches you how to detect, respect, and design around those limits before deploying automation.
+# Governor Limits: Respecting Shared Resources
+Governor limits are the Salesforce runtime rules that keep one customer’s automation from monopolizing shared compute resources. Understanding the “why” behind these limits helps you detect risky designs even before you touch code.
 
-## Transaction Basics
-Every trigger, Flow-invoked Apex, REST call, or async job runs inside a transaction. Limits reset between asynchronous executions, so queueing work strategically can avoid user-facing errors.
+## Why the Platform Enforces Limits
+- **Multi-tenant fairness:** All orgs run on pooled hardware, so Salesforce caps resource usage to guarantee predictable performance across customers.
+- **Defensive diagnostics:** Consistent limits reveal runaway logic early—if a Flow suddenly causes 200 SOQL queries, the exception points straight to the flawed design.
+- **Declarative parity:** Limits apply to Apex, Flow, and some managed packages. A limit error often means “time to redesign,” not “blame the developer.”
 
-## Common Limits to Monitor
-- 100 synchronous SOQL queries (200 for async)
-- 150 DML statements
-- 10 MB synchronous heap size (12 MB async)
-- 10 callouts per transaction (named credentials vary)
+## Types of Governor Limits
+1. **Per-transaction limits** — Counters that reset after a transaction finishes (e.g., SOQL queries, DML statements). These are the limits you hit most often inside triggers and synchronous controllers.
+2. **Per-execution context limits** — Variations for async jobs, batch execute methods, and test methods. Each context gets its own bucket, so queueing work can buy breathing room.
+3. **Rolling or org-wide limits** — Daily email callout caps, concurrent long-running jobs, or streaming events. These span multiple transactions and can block deployments if ignored.
 
-Use the `Limits` class or `System.debug(Limits.getDmlRows());` to inspect counters during execution.
+## Key Apex Limits to Monitor (Not a Full List)
+- **SOQL queries (100 sync / 200 async):** Excessive record-by-record queries typically signal logic sitting inside loops.
+- **DML statements (150 per transaction):** Nested updates or inserting child rows in loops spikes this fast.
+- **Heap size (10 MB sync / 12 MB async):** Over-fetching fields or building giant in-memory collections can exhaust runtime memory.
+- **Callouts (10 per transaction):** Integrations chained to user-driven triggers need batching or async patterns.
 
-## Bulkification Template
-1. Collect triggering record Ids (`Set<Id>`).
-2. Query related data once.
-3. Populate a `Map` for constant-time lookups.
-4. Iterate through the trigger context and update in-memory records.
-5. Perform DML outside loops.
+Whenever possible, inspect counters with the `Limits` class while debugging to identify which resource is almost exhausted.
 
+## Reading Exercise: Spot the Risk
 ```apex
-trigger OpportunityTrigger on Opportunity (before insert, before update) {
-    Set<Id> accountIds = new Set<Id>();
-    for (Opportunity opp : Trigger.new) {
-        if (opp.AccountId != null) {
-            accountIds.add(opp.AccountId);
-        }
-    }
-    Map<Id, Account> accounts = new Map<Id, Account>([
-        SELECT Id, Industry FROM Account WHERE Id IN :accountIds
-    ]);
-
-    for (Opportunity opp : Trigger.new) {
-        Account parent = accounts.get(opp.AccountId);
-        if (parent != null && parent.Industry == 'Healthcare') {
-            opp.StageName = 'Needs Compliance Review';
+trigger AssetTrigger on Asset (before update) {
+    for (Asset rec : Trigger.new) {
+        List<Case> cases = [
+            SELECT Id FROM Case WHERE AssetId = :rec.Id
+        ];
+        for (Case c : cases) {
+            c.Status = 'Investigate';
+            update c;
         }
     }
 }
 ```
-
-## Defensive Patterns
-- **Queueable chaining:** move heavy recalculations into async jobs to get a fresh limits bucket.
-- **Platform Cache or Custom Metadata:** store configuration outside triggers to avoid describe calls.
-- **Aggregate queries:** reduce rows processed when summarizing data.
-
-## Exercise: Limit-Safe Case Reassignment
-Refactor an imaginary `Case` trigger that currently performs SOQL/DML inside loops. Your new design should:
-1. Collect all `OwnerId` values and query related queue memberships once.
-2. Use a `Map<Id, Boolean>` to determine whether each owner is a queue.
-3. Reassign Cases owned by inactive queues to a fallback user without exceeding SOQL or DML limits.
-
-Deliverable: trigger (or handler class) plus an explanation of how many SOQL and DML statements run in the worst-case scenario. Include an anonymous Apex test script showing the trigger handling ≥200 records without errors.
+- What is this loop trying to accomplish?
+- Which limit is put at risk and why?
+- How could you redesign the logic so that declarative changes (like adding another lookup update) don’t multiply the problem?
