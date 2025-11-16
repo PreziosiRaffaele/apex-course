@@ -6,12 +6,11 @@ Data structure is a way to organize and store information.
 ## Apex Collections
 - **List** – ordered group of elements; positions start at index `0`. Duplicates are allowed.
 - **Set** – unordered group of unique elements; duplicate inserts are ignored.
-- **Map** – key/value pairs; each key appears once and returns exactly one value.
-Think of it like a mathematical function that takes a key and returns a value.
+- **Map** – key/value pairs; each key appears once and returns exactly one value - Think of it like a mathematical function that takes a key and returns a value.
 
 ### Micro Examples
 ```apex
-List<String> steps = new List<String>{'Create User', 'Assign Permission Set', 'Create User'};
+List<String> steps = new List<String>{'Create User', 'Assign Permission Set', 'Create User'}; // We can add multiple times the same element
 steps.add('Ship Laptop');
 String firstStep = steps[0]; // "Create User"
 
@@ -20,39 +19,34 @@ ownerIds.add(userA.Id);
 ownerIds.add(userA.Id); // still one entry
 Boolean containsB = ownerIds.contains(userB.Id);
 
-Map<Id, Contact> primaryContactByAccount = new Map<Id, Contact>();
+Map<Id, Contact> primaryContactByAccount = new Map<Id, Contact>(); // Key is the Id of the Account, value is the Contact
 primaryContactByAccount.put(acme.Id, acmePrimary);
 Contact acmeContact = primaryContactByAccount.get(acme.Id);
 ```
 
 ## Why Collections Exist
-Multi-record events (data loads, Flow updates, bulk API) send many records through the same transaction. Collections make that safe because:
-- Governor limits count all statements per transaction, so queries and DML must already expect batches, not single rows.
-- Business rules (“reject any Lead with a missing Email”) need a structure that holds every Lead until a final decision is made.
+Collections are fundamental in programming because they let you group, organize, and manage multiple pieces of data efficiently. 
 
-## Lists: Run Statements in Order
-Lists preserve insert order and accept duplicates. Use them to queue records for DML, for loop processing, or for ordered responses.
+## Lists 
+Lists preserve insert order and accept duplicates. 
+Use them to queue records for DML, for loop processing, fetch data from a SOQL query, or for ordered responses.
 
 ### Reading Exercise
 ```apex
-List<Case> escalatedCases = [
+List<Case> escalatedCases = [  // You can fetch a list of Cases with a SOQL query
     SELECT Id, Priority, Status
     FROM Case
     WHERE Status = 'Escalated'
 ];
-for (Case c : escalatedCases) {
+for (Case c : escalatedCases) { // Loop through the list to process each Case
     if (c.Priority == 'High') {
         c.OwnerId = supportDirectorId;
     }
 }
-update escalatedCases;
+update escalatedCases; // Update all the Cases in the list
 ```
-Questions:
-1. Why does the query return a List instead of a single Case?
-2. What happens to the second `High` priority Case if the first one is reassigned?
-3. Which lines prepare data, and which line performs the DML?
 
-Key takeaway: the last `update` statement reuses the entire List, so every Case in the batch gets the same outcome.
+In this example you can see how to use a List to store a group of Cases, loop through them to process each one, and then update them all at once.
 
 ## Sets: Enforce Uniqueness
 Sets remove duplicates automatically, which is useful whenever a requirement says “count or check each Id once.”
@@ -65,7 +59,7 @@ for (OpportunityTeamMember teamMember : [
     existingTeamMemberIds.add(teamMember.UserId);
 }
 
-if (!existingTeamMemberIds.contains(candidateUserId)) {
+if (!existingTeamMemberIds.contains(candidateUserId)) { // Check if the candidate is already a member of one of the opportunities
     // safe to add a new team member
 }
 
@@ -102,19 +96,6 @@ for (Case c : Trigger.new) {
 
 Pull-request review prompt: **“Where are we storing the query results so we reuse them?”** A solid answer mentions Lists, Sets, or Maps.
 
-## Collections and Declarative Changes
-Declarative automation can increase the number of records your Apex receives:
-- A Flow that now updates two child objects per parent doubles the size of Lists feeding a trigger.
-- Duplicate Rules or Validation Rules may block DML for some entries, so confirm the Lists passed to `insert` or `update` already expect partial success.
-- Omni-Channel, bulk API, or Integration User imports can create long batches. Verify the Apex paths through those objects rely on Lists and Sets instead of single-record assumptions.
-
-## Quick Reference
-- **List** — ordered, duplicates allowed, index-based access, ideal for batch DML.
-- **Set** — unordered, unique values, fast membership checks, ideal for de-duplication.
-- **Map** — key/value pairs, one lookup per key, ideal for joining related data.
-
-Typical pattern: gather Ids in a Set → query using that Set → store the results in a Map → update the final List.
-
 ## Practice Scenario
 QA reports that “Only some Contacts lost their `VIP_Flag__c` when an Account downgraded.” The developer shared this code:
 
@@ -132,6 +113,38 @@ Evaluate with these questions:
 3. Should we collect Contact Ids in a Set first to avoid reprocessing the same records elsewhere?
 
 ## Exercise: Trace the Data Flow
-1. Map the steps “Marketing uploads Leads” → “Trigger validates duplicates” → “Trigger updates `Validation_Status__c`.” Label which collection type sits in each step.
-2. Review one Apex trigger in your org and highlight the line that converts a Set of Ids into a Map of records. Explain in plain language why that prevents extra queries.
-3. Explain the data flow to a teammate who works primarily in declarative tools. If they follow the story without touching the code, you have described collections clearly.
+- Customers complain they are receiving multiple time the same email. Implement a method that returns a list of unique emails, removing duplicates and empty values.
+```apex
+public static List<String> getUniqueValidEmails(List<String> inputEmails){
+    // Your code here
+}
+```
+
+-  We need to send an email to each Account owner with info about the related Contacts. Implement a method that returns a Map with the Owner Id as the key and a List of Contacts as the value.
+```apex
+public static Map<Id, List<Contact>> getContactsByAccount(Set<Id> accountIds)
+{
+    // Your code here
+}
+```
+
+- Customers complain that updates on the Account with many Contacts are slow and sometimes fail with a timeout error.
+Review the code below and explain why the error occurs. Refactor the code to avoid the timeout error.
+
+```apex
+trigger AccountTrigger on Account (before update) {
+    for (Account acc : Trigger.new) {
+        List<Contact> contacts = [SELECT Id FROM Contact WHERE AccountId = :acc.Id];
+
+        for (Contact c : contacts) {
+            c.Country__c = acc.Country__c;
+            if (acc.Country__c == 'PL' || acc.Country__c == 'IT') {
+                c.GDPR_Region__c = 'EU';
+            }else {
+                c.GDPR_Region__c = 'Non-EU';
+            }
+            update c;
+        }
+    }
+}
+```
